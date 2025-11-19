@@ -86,4 +86,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(PoliceStation::class, 'station_id', 'station_id');
     }
+
+    public function officer()
+    {
+        return $this->hasOne(PoliceOfficer::class, 'user_id', 'id');
+    }
 }

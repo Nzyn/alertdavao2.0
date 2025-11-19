@@ -8,6 +8,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\BarangayController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
     Route::put('/reports/{id}/status', [ReportController::class, 'updateStatus'])->name('reports.updateStatus');
     Route::get('/reports/{id}/details', [ReportController::class, 'getDetails'])->name('reports.details');
+
+    // Barangay management routes
+    Route::get('/barangays', [BarangayController::class, 'index'])->name('barangays.index');
+    Route::get('/barangays/{barangayId}', [BarangayController::class, 'show'])->name('barangays.show');
 
     Route::get('/users', function () {
         $users = \App\Models\User::with('roles')->orderBy('created_at', 'desc')->get();

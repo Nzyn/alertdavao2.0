@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\BarangayController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,11 @@ Route::put('/users/{id}', [UserController::class, 'update']);
 Route::post('/reports', [ReportController::class, 'store']);
 Route::get('/reports', [ReportController::class, 'index']);
 Route::get('/reports/user/{userId}', [ReportController::class, 'getUserReports']);
+
+// Barangay management routes
+Route::get('/barangays', [BarangayController::class, 'getAll']);
+Route::post('/barangays/{barangayId}/assign-station', [BarangayController::class, 'assignStation']);
+Route::post('/barangays/find-by-coordinates', [BarangayController::class, 'findByCoordinates']);
 
 // For debugging/testing - remove in production
 Route::get('/test', function () {

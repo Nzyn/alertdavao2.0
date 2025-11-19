@@ -220,7 +220,7 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
             // Get backend URL from environment or use detected one
             const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.1.4:3000';
-            
+
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
@@ -399,118 +399,175 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         const lng = mapInitialCoordinates.current.longitude || 125.6128;
 
         return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Location Picker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Location Picker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
     .location-info {
-      position: fixed; bottom: 10px; left: 10px; right: 10px;
-      background: white; padding: 12px; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000;
+     position: fixed; bottom: 10px; left: 10px; right: 10px;
+     background: white; padding: 12px; border-radius: 8px;
+     box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000;
     }
     .controls {
-      position: fixed; top: 10px; right: 10px; z-index: 1001;
+     position: fixed; top: 10px; right: 10px; z-index: 1001;
     }
     .btn {
-      background: white; border: none; padding: 8px; margin: 2px;
-      border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+     background: white; border: none; padding: 8px; margin: 2px;
+     border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
     }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  
-  <div class="controls">
+    .geofence-info {
+     position: fixed; top: 50px; right: 10px; background: #fff3cd;
+     border: 1px solid #ffc107; padding: 8px 12px; border-radius: 4px;
+     font-size: 12px; color: #856404; z-index: 1000; max-width: 200px;
+    }
+    </style>
+    </head>
+    <body>
+    <div id="map"></div>
+    
+    <div class="controls">
     <button class="btn" onclick="centerOnMarker()" title="Center">🎯</button>
-  </div>
-  
-  <div class="location-info">
+    </div>
+
+    <div class="geofence-info">
+    📍 Map limited to Davao City
+    </div>
+    
+    <div class="location-info">
     <div><strong>📍 Location Picker</strong></div>
     <div id="location-address">Click on map to select location</div>
-  </div>
-  
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
     let map, marker;
     
+    // Davao City boundaries (approximate coordinates)
+    const DAVAO_BOUNDS = [
+     [6.8, 125.2],    // Southwest corner
+     [7.4, 125.9]     // Northeast corner
+    ];
+    
+    // Maximum bounds to prevent zooming out beyond Davao City
+    const MAX_BOUNDS_PADDING = 0.05;
+    const PADDED_BOUNDS = [
+     [6.8 - MAX_BOUNDS_PADDING, 125.2 - MAX_BOUNDS_PADDING],
+     [7.4 + MAX_BOUNDS_PADDING, 125.9 + MAX_BOUNDS_PADDING]
+    ];
+    
     function initMap() {
-      try {
-        console.log('Initializing map at:', ${lat}, ${lng});
-        
-        // Detect platform first
-        const isWebPlatform = !window.ReactNativeWebView;
-        
-        // Configure map with platform-specific options
-        const mapOptions = {
-          zoomControl: true,
-          dragging: true,
-          touchZoom: true,
-          doubleClickZoom: true,
-          scrollWheelZoom: isWebPlatform,
-          boxZoom: isWebPlatform,
-          keyboard: isWebPlatform,
-          tap: true
-        };
-        
-        map = L.map('map', mapOptions).setView([${lat}, ${lng}], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-        
-        marker = L.marker([${lat}, ${lng}], { draggable: true }).addTo(map);
-        
-        // Platform-specific interactions
-        if (isWebPlatform) {
-          // Web: Right-click to select location
-          map.on('contextmenu', function(e) {
-            e.originalEvent.preventDefault();
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            marker.setLatLng([lat, lng]);
-            sendLocationToApp(lat, lng);
-            document.getElementById('location-address').innerHTML = 
-              'Selected: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
-          });
-          
-          // Update instructions for web
-          document.getElementById('location-address').innerHTML = 
-            'Right-click on map to select location. Left-click and drag to move map.';
-        } else {
-          // Mobile: Single tap to select location (two-finger drag is automatic)
-          map.on('click', function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            marker.setLatLng([lat, lng]);
-            sendLocationToApp(lat, lng);
-            document.getElementById('location-address').innerHTML = 
-              'Selected: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
-          });
-          
-          // Update instructions for mobile
-          document.getElementById('location-address').innerHTML = 
-            'Tap on map to select location. Use two fingers to drag and zoom.';
-        }
-        
-        // Drag marker
-        marker.on('dragend', function(e) {
-          const pos = e.target.getLatLng();
-          sendLocationToApp(pos.lat, pos.lng);
-          document.getElementById('location-address').innerHTML = 
-            'Selected: ' + pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6);
-        });
-        
-        console.log('Map initialized successfully');
-      } catch (error) {
-        console.error('Map error:', error);
-        document.getElementById('location-address').innerHTML = 'Error: ' + error.message;
-      }
-    }
+     try {
+       console.log('Initializing map at:', ${lat}, ${lng});
+       
+       // Detect platform first
+       const isWebPlatform = !window.ReactNativeWebView;
+       
+       // Configure map with platform-specific options and geofencing
+       const mapOptions = {
+         zoomControl: true,
+         dragging: true,
+         touchZoom: true,
+         doubleClickZoom: true,
+         scrollWheelZoom: isWebPlatform,
+         boxZoom: isWebPlatform,
+         keyboard: isWebPlatform,
+         tap: true,
+         maxBounds: PADDED_BOUNDS,
+         maxBoundsViscosity: 1.0
+       };
+       
+       map = L.map('map', mapOptions).setView([${lat}, ${lng}], 13);
+       
+       // Set min/max zoom levels for additional control
+       map.setMinZoom(11);
+       map.setMaxZoom(18);
+       
+       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+         attribution: '© OpenStreetMap contributors'
+       }).addTo(map);
+       
+       marker = L.marker([${lat}, ${lng}], { draggable: true }).addTo(map);
+       
+       // Draw Davao City boundary rectangle
+       const boundaryRectangle = L.rectangle(DAVAO_BOUNDS, {
+         color: '#FF6B6B',
+         weight: 2,
+         opacity: 0.5,
+         fill: true,
+         fillColor: '#FF6B6B',
+         fillOpacity: 0.05,
+         dashArray: '5, 5'
+       }).addTo(map);
+       
+       // Platform-specific interactions
+       if (isWebPlatform) {
+         // Web: Right-click to select location
+         map.on('contextmenu', function(e) {
+           e.originalEvent.preventDefault();
+           let lat = e.latlng.lat;
+           let lng = e.latlng.lng;
+           
+           // Constrain to Davao City bounds
+           lat = Math.max(DAVAO_BOUNDS[0][0], Math.min(DAVAO_BOUNDS[1][0], lat));
+           lng = Math.max(DAVAO_BOUNDS[0][1], Math.min(DAVAO_BOUNDS[1][1], lng));
+           
+           marker.setLatLng([lat, lng]);
+           sendLocationToApp(lat, lng);
+           document.getElementById('location-address').innerHTML = 
+             'Selected: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+         });
+         
+         // Update instructions for web
+         document.getElementById('location-address').innerHTML = 
+           'Right-click on map to select location. Left-click and drag to move map.';
+       } else {
+         // Mobile: Single tap to select location (two-finger drag is automatic)
+         map.on('click', function(e) {
+           let lat = e.latlng.lat;
+           let lng = e.latlng.lng;
+           
+           // Constrain to Davao City bounds
+           lat = Math.max(DAVAO_BOUNDS[0][0], Math.min(DAVAO_BOUNDS[1][0], lat));
+           lng = Math.max(DAVAO_BOUNDS[0][1], Math.min(DAVAO_BOUNDS[1][1], lng));
+           
+           marker.setLatLng([lat, lng]);
+           sendLocationToApp(lat, lng);
+           document.getElementById('location-address').innerHTML = 
+             'Selected: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+         });
+         
+         // Update instructions for mobile
+         document.getElementById('location-address').innerHTML = 
+           'Tap on map to select location. Use two fingers to drag and zoom.';
+         }
+         
+         // Drag marker with geofence constraint
+         marker.on('dragend', function(e) {
+         let pos = e.target.getLatLng();
+         
+         // Constrain marker to Davao City bounds
+         const lat = Math.max(DAVAO_BOUNDS[0][0], Math.min(DAVAO_BOUNDS[1][0], pos.lat));
+         const lng = Math.max(DAVAO_BOUNDS[0][1], Math.min(DAVAO_BOUNDS[1][1], pos.lng));
+         
+         pos = L.latLng(lat, lng);
+         marker.setLatLng(pos);
+         
+         sendLocationToApp(pos.lat, pos.lng);
+         document.getElementById('location-address').innerHTML = 
+           'Selected: ' + pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6);
+         });
+         
+         console.log('Map initialized successfully');
+         } catch (error) {
+         console.error('Map error:', error);
+         document.getElementById('location-address').innerHTML = 'Error: ' + error.message;
+         }
+         }
     
     function centerOnMarker() {
       if (map && marker) {
