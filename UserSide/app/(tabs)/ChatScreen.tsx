@@ -17,8 +17,8 @@ const ChatScreen = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  let typingTimeout: NodeJS.Timeout | null = null;
-  let typingCheckInterval: NodeJS.Timeout | null = null;
+  let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+  let typingCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   const fetchMessages = async () => {
     if (!user || !user.id || !otherUserId) return;
