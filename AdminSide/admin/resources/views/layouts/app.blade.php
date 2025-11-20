@@ -316,6 +316,7 @@
                 </div>
                 
                 <ul class="nav-menu">
+                    <!-- Navigation for all users -->
                     <li class="nav-item">
                         <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                             <svg class="nav-icon" viewBox="0 0 24 24">
@@ -333,20 +334,23 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="{{ route('messages') }}" class="nav-link {{ request()->routeIs('messages') ? 'active' : '' }}">
+                            <svg class="nav-icon" viewBox="0 0 24 24">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Messages
+                        </a>
+                    </li>
+                    
+                    <!-- Admin-only navigation -->
+                    @if(auth()->user() && auth()->user()->role === 'admin')
+                    <li class="nav-item">
                         <a href="{{ route('users') }}" class="nav-link {{ request()->routeIs('users') ? 'active' : '' }}">
                             <svg class="nav-icon" viewBox="0 0 24 24">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                 <circle cx="12" cy="7" r="4"/>
                             </svg>
                             Users
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('messages') }}" class="nav-link {{ request()->routeIs('messages') ? 'active' : '' }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            Messages
                         </a>
                     </li>
                     <li class="nav-item">
@@ -376,6 +380,7 @@
                             View Map
                         </a>
                     </li>
+                    @endif
                 </ul>
             </nav>
             

@@ -39,9 +39,19 @@ export const reportService = {
       formData.append('user_id', reportData.userId);
       
       // Add location data if available
-      if (reportData.latitude !== undefined && reportData.longitude !== undefined) {
+      if (reportData.latitude !== undefined && reportData.latitude !== null && 
+          reportData.longitude !== undefined && reportData.longitude !== null) {
+        console.log('Adding location to report:', {
+          latitude: reportData.latitude,
+          longitude: reportData.longitude
+        });
         formData.append('latitude', reportData.latitude.toString());
         formData.append('longitude', reportData.longitude.toString());
+      } else {
+        console.warn('No valid location coordinates found:', {
+          latitude: reportData.latitude,
+          longitude: reportData.longitude
+        });
       }
       
       // Add media file if available

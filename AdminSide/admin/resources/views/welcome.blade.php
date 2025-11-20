@@ -395,23 +395,50 @@
 
 @section('content')
     <div class="content-header">
-        <h1 class="content-title">Dashboard Overview</h1>
+        @if($userRole === 'police')
+            <h1 class="content-title">Police Station Dashboard</h1>
+            <p class="content-subtitle">Manage reports for your assigned station</p>
+        @else
+            <h1 class="content-title">Dashboard Overview</h1>
+            <p class="content-subtitle">System-wide statistics and overview</p>
+        @endif
     </div>
                 
                 <!-- Statistics Cards -->
                 <div class="stats-grid">
-                    <a href="{{ route('reports') }}" class="stat-card total">
-                        <div class="stat-title">Total Reports</div>
-                        <div class="stat-value">84</div>
-                    </a>
-                    <a href="{{ route('reports', ['status' => 'investigating']) }}" class="stat-card verified">
-                        <div class="stat-title">Verified Reports</div>
-                        <div class="stat-value">26</div>
-                    </a>
-                    <a href="{{ route('reports', ['status' => 'pending']) }}" class="stat-card pending">
-                        <div class="stat-title">Pending Reports</div>
-                        <div class="stat-value">47</div>
-                    </a>
+                    @if($userRole === 'police')
+                        <!-- Police Officer Stats -->
+                        <a href="{{ route('reports') }}" class="stat-card total">
+                            <div class="stat-title">Total Reports</div>
+                            <div class="stat-value">{{ $totalReports }}</div>
+                        </a>
+                        <a href="{{ route('reports', ['status' => 'investigating']) }}" class="stat-card verified">
+                            <div class="stat-title">Investigating</div>
+                            <div class="stat-value">{{ $investigatingReports }}</div>
+                        </a>
+                        <a href="{{ route('reports', ['status' => 'pending']) }}" class="stat-card pending">
+                            <div class="stat-title">Pending</div>
+                            <div class="stat-value">{{ $pendingReports }}</div>
+                        </a>
+                        <a href="{{ route('reports', ['status' => 'resolved']) }}" class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            <div class="stat-title">Resolved</div>
+                            <div class="stat-value">{{ $resolvedReports }}</div>
+                        </a>
+                    @else
+                        <!-- Admin Stats -->
+                        <a href="{{ route('reports') }}" class="stat-card total">
+                            <div class="stat-title">Total Reports</div>
+                            <div class="stat-value">{{ $totalReports }}</div>
+                        </a>
+                        <a href="{{ route('users') }}" class="stat-card verified">
+                            <div class="stat-title">Total Users</div>
+                            <div class="stat-value">{{ $totalUsers }}</div>
+                        </a>
+                        <a href="{{ route('users') }}" class="stat-card pending">
+                            <div class="stat-title">Police Officers</div>
+                            <div class="stat-value">{{ $totalPoliceOfficers }}</div>
+                        </a>
+                    @endif
                 </div>
                 
                 <!-- Priority Cases and Map -->

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   visible: boolean;
@@ -16,12 +17,31 @@ export default function UpdateSuccessDialog({
   okText = 'OK',
   onOk,
 }: Props) {
+  const [displayMessage, setDisplayMessage] = useState(message);
+
+  useEffect(() => {
+    if (visible) {
+      // Check if there's a custom message stored globally (for report submission)
+      const customMsg = (global as any).successMessage;
+      if (customMsg) {
+        setDisplayMessage(customMsg);
+        // Clear it after use
+        (global as any).successMessage = null;
+      } else {
+        setDisplayMessage(message);
+      }
+    }
+  }, [visible, message]);
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.card}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
+          </View>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+          <Text style={styles.message}>{displayMessage}</Text>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.okButton} onPress={onOk} activeOpacity={0.8}>
               <Text style={styles.okText}>{okText}</Text>
@@ -46,6 +66,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    marginBottom: 12,
   },
   title: {
     fontSize: 18,
@@ -59,10 +83,11 @@ const styles = StyleSheet.create({
     color: '#444',
     textAlign: 'center',
     marginVertical: 12,
+    lineHeight: 20,
   },
   actions: {
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 16,
   },
   okButton: {
     minWidth: 120,

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ReportController;
@@ -30,9 +31,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected Routes (require authentication)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/', function () {
-        return view('welcome');
-    })->name('dashboard');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
     Route::put('/reports/{id}/status', [ReportController::class, 'updateStatus'])->name('reports.updateStatus');
@@ -51,6 +50,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/users/{id}/flag', [UserController::class, 'flagUser'])->name('users.flag');
     Route::post('/users/{id}/promote', [UserController::class, 'promoteToOfficer'])->name('users.promote');
     Route::post('/users/{id}/change-role', [UserController::class, 'changeRole'])->name('users.changeRole');
+    Route::post('/users/{id}/assign-station', [UserController::class, 'assignStation'])->name('users.assignStation');
 
     Route::get('/messages', [MessageController::class, 'index'])->name('messages');
     Route::get('/messages/conversation/{userId}', [MessageController::class, 'getConversation'])->name('messages.conversation');
@@ -69,6 +69,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/verifications/pending', [VerificationController::class, 'getPendingVerifications']);
     Route::post('/api/verification/approve', [VerificationController::class, 'approveVerification']);
     Route::post('/api/verification/reject', [VerificationController::class, 'rejectVerification']);
+    
+    // Police station routes
+    Route::get('/api/police-stations', [BarangayController::class, 'getPoliceStations']);
 
     Route::get('/statistics', function () {
         return view('statistics');

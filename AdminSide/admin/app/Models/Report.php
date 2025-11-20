@@ -15,11 +15,13 @@ class Report extends Model
         'user_id',
         'title',
         'description',
+        'report_type',
         'crime_type',
         'location_id',
         'assigned_station_id',
         'status',
         'is_anonymous',
+        'date_reported',
     ];
 
     protected $casts = [

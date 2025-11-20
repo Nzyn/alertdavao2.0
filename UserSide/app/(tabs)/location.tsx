@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useUser } from '../../contexts/UserContext';
+import * as Location from 'expo-location';
 import styles from './styles';
 
 const LocationScreen = () => {
@@ -137,7 +138,137 @@ const LocationScreen = () => {
       console.log('🔍 User searching for address:', searchAddress);
       await geocodeAddress(searchAddress, searchAddress, true);
     } else {
-      alert('Please enter an address to search.');
+      Alert.alert('Please enter an address to search.');
+    }
+  };
+
+  // Handle use current location
+  const handleUseCurrentLocation = async () => {
+    try {
+      setIsGeocoding(true);
+      console.log('📍 Getting current location...');
+
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'AlertDavao needs location permission to use the current location feature. Please grant permission in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Try Again', onPress: handleUseCurrentLocation }
+          ]
+        );
+        setIsGeocoding(false);
+        return;
+      }
+
+      console.log('✅ Location permission granted, fetching position...');
+
+      // Use a shorter timeout (10 seconds) for faster fallback
+      const locationPromise = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 1000,
+        distanceInterval: 0,
+      });
+
+      const timeoutPromise = new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error('Location request timed out')), 10000)
+      );
+
+      let location: any;
+      try {
+        location = await Promise.race([locationPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        // If it times out, try with lower accuracy for faster response
+        console.warn('⚠️ Timeout with Balanced accuracy, trying with Low accuracy...');
+        const fallbackPromise = Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Low,
+          timeInterval: 500,
+          distanceInterval: 0,
+        });
+
+        const fallbackTimeout = new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('Location request timed out')), 8000)
+        );
+
+        location = await Promise.race([fallbackPromise, fallbackTimeout]);
+      }
+
+      console.log('✅ Got current location:', location.coords);
+
+      const coords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setUserCoordinates(coords);
+
+      // Reverse geocode to get address and auto-fill the search bar
+      console.log('🔄 Reverse geocoding coordinates...');
+      try {
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.1.4:3000';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch(
+          `${backendUrl}/api/location/reverse?lat=${coords.latitude}&lon=${coords.longitude}`,
+          {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+            }
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.address) {
+            const address = data.address;
+            setSearchAddress(address);
+            setCurrentLocationName(address);
+            console.log('✅ Address auto-filled:', address);
+          }
+        } else {
+          // Fallback: use coordinates
+          const coordinateAddress = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+          setSearchAddress(coordinateAddress);
+          setCurrentLocationName(coordinateAddress);
+          console.log('✅ Address auto-filled (coordinates):', coordinateAddress);
+        }
+      } catch (geocodeError) {
+        // Fallback: use coordinates if geocoding fails
+        console.warn('⚠️ Reverse geocoding failed, using coordinates:', geocodeError);
+        const coordinateAddress = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+        setSearchAddress(coordinateAddress);
+        setCurrentLocationName(coordinateAddress);
+        console.log('✅ Address auto-filled (coordinates):', coordinateAddress);
+      }
+    } catch (error: any) {
+      console.error('💥 Error getting current location:', error);
+      let errorMessage = 'Unable to get current location.';
+
+      // Handle expo-location errors
+      if (error.code === 'E_LOCATION_UNAVAILABLE') {
+        errorMessage = 'Location services are not available or disabled. Please enable location services on your device and try again.';
+      } else if (error.code === 'E_PERMISSION_DENIED') {
+        errorMessage = 'Location permission was denied. Please grant permission in your device settings.';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Location request timed out. This usually happens in areas with weak GPS signal. Please:\n\n• Move outdoors with clear sky view\n• Wait a few moments and try again\n• Or search for your location manually';
+      } else if (error.code === 1) {
+        errorMessage = 'Location permission was denied. Please allow location access in your browser settings.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location is temporarily unavailable. Please ensure location services are enabled and try again.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. This usually happens in areas with weak GPS signal. Please:\n\n• Move outdoors with clear sky view\n• Wait a few moments and try again\n• Or search for your location manually';
+      }
+
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
@@ -303,6 +434,23 @@ const LocationScreen = () => {
           />
         </TouchableOpacity>
       </View>
+
+      {/* Use Current Location Button */}
+      <TouchableOpacity 
+        style={localStyles.useLocationButton}
+        onPress={handleUseCurrentLocation}
+        disabled={isGeocoding}
+      >
+        <Ionicons 
+          name="locate" 
+          size={20} 
+          color="#fff" 
+          style={{ marginRight: 8 }}
+        />
+        <Text style={localStyles.useLocationButtonText}>
+          {isGeocoding ? 'Getting location...' : 'Use My Current Location'}
+        </Text>
+      </TouchableOpacity>
 
       {/* Loading Indicator */}
       {isGeocoding && (
@@ -470,5 +618,25 @@ const localStyles = StyleSheet.create({
     fontSize: 12,
     color: "#333",
     marginTop: 4,
+  },
+  useLocationButton: {
+    backgroundColor: "#1d3557",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  useLocationButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

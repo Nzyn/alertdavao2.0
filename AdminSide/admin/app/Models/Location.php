@@ -13,6 +13,7 @@ class Location extends Model
     
     protected $fillable = [
         'barangay',
+        'reporters_address',
         'latitude',
         'longitude'
     ];

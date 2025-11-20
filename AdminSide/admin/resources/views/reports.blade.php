@@ -968,17 +968,28 @@ function showReportDetails(reportId) {
 }
 
 function getLocationDisplay(report) {
-    // If report has a location with barangay, use that
-    if (report.location && report.location.barangay) {
-        return report.location.barangay + ' (' + report.location.latitude + ', ' + report.location.longitude + ')';
+    // Check if location object exists with coordinates
+    if (report.location) {
+        const lat = report.location.latitude;
+        const lng = report.location.longitude;
+        const barangay = report.location.barangay || '';
+        
+        // Build location string with coordinates
+        if (lat !== null && lat !== undefined && lng !== null && lng !== undefined) {
+            if (barangay && barangay !== 'Unknown' && !barangay.startsWith('Lat:')) {
+                return barangay + ' (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')';
+            } else {
+                return '(' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')';
+            }
+        }
     }
     
-    // If report has latitude and longitude directly, use those
+    // Fallback: Check direct properties (shouldn't happen with current setup)
     if (report.latitude && report.longitude) {
-        return '(' + report.latitude + ', ' + report.longitude + ')';
+        return '(' + report.latitude.toFixed(4) + ', ' + report.longitude.toFixed(4) + ')';
     }
     
-    // If no location data, return default message
+    // No location data found
     return 'No location provided';
 }
 

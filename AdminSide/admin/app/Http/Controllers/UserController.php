@@ -316,4 +316,98 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Assign a police or admin user to a police station
+     */
+    public function assignStation(Request $request, string $id): JsonResponse
+    {
+        try {
+            \Log::info('assignStation called', ['user_id' => $id, 'request_data' => $request->all()]);
+            
+            $user = User::findOrFail($id);
+            \Log::info('User found', ['user_id' => $user->id, 'current_role' => $user->role]);
+            
+            // Validate that user is police or admin
+            if ($user->role !== 'admin' && $user->role !== 'police') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only police and admin users can be assigned to police stations'
+                ], 400);
+            }
+            
+            // Validate the station_id
+            $validatedData = $request->validate([
+                'station_id' => 'required|exists:police_stations,station_id'
+            ]);
+            
+            \Log::info('Validation passed', ['station_id' => $validatedData['station_id']]);
+            
+            // Check if station exists
+            $station = PoliceStation::where('station_id', $validatedData['station_id'])->first();
+            if (!$station) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Police station not found'
+                ], 404);
+            }
+            
+            // Assign the user to the station
+            $user->station_id = $validatedData['station_id'];
+            $user->save();
+            
+            // If police user, also update/create police officer record
+            if ($user->role === 'police') {
+                PoliceOfficer::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'station_id' => $validatedData['station_id'],
+                        'assigned_since' => now(),
+                        'status' => 'active'
+                    ]
+                );
+                
+                \Log::info('Police officer record updated', [
+                    'user_id' => $user->id,
+                    'station_id' => $validatedData['station_id']
+                ]);
+            }
+            
+            \Log::info('User assigned to station', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'station_id' => $validatedData['station_id'],
+                'station_name' => $station->station_name
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => ucfirst($user->role) . ' user has been assigned to the police station successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'role' => $user->role,
+                    'station_id' => $user->station_id
+                ]
+            ]);
+        } catch (ModelNotFoundException $e) {
+            \Log::error('User not found', ['user_id' => $id]);
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        } catch (ValidationException $e) {
+            \Log::error('Validation failed', ['errors' => $e->errors()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Exception in assignStation', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while assigning the user to the station: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

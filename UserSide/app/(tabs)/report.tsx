@@ -104,8 +104,13 @@ export default function ReportCrime() {
   };
 
   const handleLocationSelect = (address: string, coordinates: { latitude: number; longitude: number }) => {
-    console.log('Location selected:', { address, coordinates });
-    setLocation(address);
+    console.log('✅ Location selected from map:', { 
+      address, 
+      coordinates,
+      latitude: coordinates?.latitude,
+      longitude: coordinates?.longitude
+    });
+    setLocation(address || '');
     setLocationCoordinates(coordinates);
     setShowLocationPicker(false);
   };
@@ -167,37 +172,64 @@ export default function ReportCrime() {
   };
 
   const handleSubmit = async () => {
+    console.log('🔍 Validating report submission...');
+    
     // Validation
-    if (!title.trim() || selectedCrimes.length === 0 || !description.trim() || !selectedDateStr || !timeParts) {
-      Alert.alert('Incomplete', 'Please fill in Title, Crime Type(s), Description, and Date & Time of Incident.');
+    if (!title.trim()) {
+      Alert.alert('Missing Title', 'Please enter a title for your report.');
+      return;
+    }
+
+    if (selectedCrimes.length === 0) {
+      Alert.alert('No Crime Type Selected', 'Please select at least one crime type.');
+      return;
+    }
+
+    if (!description.trim()) {
+      Alert.alert('Missing Description', 'Please describe what happened in detail.');
+      return;
+    }
+
+    if (!selectedDateStr || !timeParts) {
+      Alert.alert('Missing Date & Time', 'Please specify when the incident occurred.');
       return;
     }
 
     // Check if user is logged in
     if (!user || !user.id) {
       Alert.alert('Error', 'You must be logged in to submit a report.');
+      console.error('User not logged in:', user);
       return;
     }
 
-    // Warn if no location is set
+    // REQUIRE location - do not allow submission without it
     if (!location.trim() || !locationCoordinates) {
       Alert.alert(
-        'No Location',
-        'No location has been selected. Would you like to submit anyway?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Submit Without Location', onPress: () => submitReportData() }
-        ]
+        'Location Required',
+        'A location is required to submit a report. This helps police respond to incidents in the correct area.\n\nPlease use "Get my location" or manually enter a location.'
+      );
+      console.warn('Location missing - coordinates:', locationCoordinates, 'location string:', location);
+      return;
+    }
+
+    // Validate coordinates are not 0,0
+    if (locationCoordinates.latitude === 0 && locationCoordinates.longitude === 0) {
+      Alert.alert(
+        'Invalid Location',
+        'The location has invalid coordinates (0,0). Please select a valid location.'
       );
       return;
     }
 
+    console.log('✅ All validations passed, submitting report...');
     submitReportData();
   };
 
   const submitReportData = async () => {
     try {
       setIsSubmitting(true);
+      console.log('\n' + '='.repeat(50));
+      console.log('📤 Starting report submission...');
 
       // Format the incident date and time
       const pad = (n: number) => n.toString().padStart(2, '0');
@@ -222,24 +254,44 @@ export default function ReportCrime() {
         userId: user.id,
       };
 
-      console.log('Submitting report with location:', { 
-        location, 
-        coordinates: locationCoordinates,
-        reportData 
-      });
+      console.log('📋 Report Data:');
+      console.log('   Title:', reportData.title);
+      console.log('   Crime Types:', reportData.crimeTypes);
+      console.log('   Location:', reportData.location);
+      console.log('   Coordinates:', { lat: reportData.latitude, lng: reportData.longitude });
+      console.log('   Has Media:', !!reportData.media);
+      console.log('   Anonymous:', reportData.isAnonymous);
+      console.log('   User ID:', reportData.userId);
 
       // Submit the report
+      console.log('\n🚀 Calling reportService.submitReport()...');
       const response = await reportService.submitReport(reportData);
 
-      console.log('Report submitted successfully:', response);
+      console.log('✅ Report submitted successfully!');
+      console.log('Response:', response);
       
-      // Show success dialog instead of Alert
+      // Store success data to show in dialog
+      const locationStr = location.trim() || `${locationCoordinates?.latitude?.toFixed(4)}, ${locationCoordinates?.longitude?.toFixed(4)}`;
+      const successMessage = `Your report has been submitted successfully.\n\nLocation: ${locationStr}\n\nIP Address and location have been recorded for security and tracking purposes.`;
+      
+      // Show success dialog with IP/location recording message
       setShowSuccessDialog(true);
+      
+      // Store the message to display
+      (global as any).successMessage = successMessage;
+      
+      console.log('='.repeat(50) + '\n');
     } catch (error) {
-      console.error('Error submitting report:', error);
+      console.error('\n❌ Error submitting report:', error);
+      console.log('='.repeat(50) + '\n');
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred. Please try again.';
+      
       Alert.alert(
         'Submission Failed', 
-        error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+        errorMessage
       );
     } finally {
       setIsSubmitting(false);
@@ -290,6 +342,7 @@ export default function ReportCrime() {
         value={location}
         onChangeText={setLocation}
         multiline
+        editable={true}
       />
 
       {locationCoordinates && (
