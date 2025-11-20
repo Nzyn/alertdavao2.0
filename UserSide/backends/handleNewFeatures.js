@@ -450,33 +450,28 @@ const getUserConversations = async (req, res) => {
     const hasAdminPolice = adminCheck[0].count > 0;
     console.log(`📨 Admin/Police users in system: ${hasAdminPolice ? 'YES ✅' : 'NONE ❌'}`);
     
-    // STEP 3: Filter to only officers/admins (or show all if no admin/police exist yet)
-    const conversations = [];
-    
-    for (const partner of allMessagePartners) {
-      const otherUserId = partner.other_user_id;
-      
-      // Get user details and check if they're an officer/admin
-      const [users] = await db.query(
-        'SELECT id, firstname, lastname, role FROM users WHERE id = ?',
-        [otherUserId]
-      );
-      
-      if (users.length === 0) continue;
-      
-      const user = users[0];
-      const isOfficerOrAdmin = user.role === 'admin' || user.role === 'police';
-      
-      console.log(`📨 Partner ${otherUserId}: ${user.firstname} ${user.lastname}, Role: ${user.role}, Is Officer/Admin: ${isOfficerOrAdmin}`);
-      
-      // ALWAYS include conversations with admin/police users
-      // Regular users should see conversations with officers/admins
-      if (isOfficerOrAdmin) {
-        console.log(`   ✅ Including (is admin/police)`);
-      } else {
-        console.log(`   ⏭️ Skipping - not an officer/admin (regular user conversations excluded)`);
-        continue;
-      }
+    // STEP 3: Include ALL conversations with message partners (both ways)
+     const conversations = [];
+     
+     for (const partner of allMessagePartners) {
+       const otherUserId = partner.other_user_id;
+       
+       // Get user details
+       const [users] = await db.query(
+         'SELECT id, firstname, lastname, role FROM users WHERE id = ?',
+         [otherUserId]
+       );
+       
+       if (users.length === 0) continue;
+       
+       const user = users[0];
+       const isOfficerOrAdmin = user.role === 'admin' || user.role === 'police';
+       
+       console.log(`📨 Partner ${otherUserId}: ${user.firstname} ${user.lastname}, Role: ${user.role}, Is Officer/Admin: ${isOfficerOrAdmin}`);
+       
+       // Always include - users should see all their conversations
+       // Police/admin can talk to users, users can talk to police/admin
+       console.log(`   ✅ Including conversation`);
       
       // Get last message and unread count
       const [lastMessageResult] = await db.query(`

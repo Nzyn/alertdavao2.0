@@ -161,7 +161,10 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 longitude: location.coords.longitude,
             };
 
+            console.log('🎯 Setting marker coordinate from device location:', coords);
             setMarkerCoordinate(coords);
+            // Also update the map reference
+            mapInitialCoordinates.current = coords;
 
             // Reverse geocode to get address and directly populate it
             console.log('Reverse geocoding coordinates...');
@@ -179,6 +182,7 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 const coordinateAddress = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
                 setSelectedAddress(coordinateAddress);
                 setMarkerCoordinate(coords);
+                mapInitialCoordinates.current = coords;
                 console.log('✅ Location loaded (coordinates only):', coordinateAddress);
             }
         } catch (error: any) {
@@ -340,8 +344,11 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 if (data && data.address) {
                     // Address is already formatted by backend
                     const formattedAddress = data.address;
-                    console.log('Reverse geocoded address:', formattedAddress);
+                    console.log('✅ Reverse geocoded address:', formattedAddress);
+                    // IMPORTANT: Update both the address AND the marker coordinate
                     setSelectedAddress(formattedAddress);
+                    setMarkerCoordinate({ latitude, longitude });
+                    mapInitialCoordinates.current = { latitude, longitude };
                     setSearchQuery('');
                     return formattedAddress;
                 }
@@ -352,7 +359,11 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
         // Fallback to coordinates
         const coordinateAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        console.log('⚠️ Using fallback coordinates:', coordinateAddress);
         setSelectedAddress(coordinateAddress);
+        // IMPORTANT: Also update marker coordinate in fallback
+        setMarkerCoordinate({ latitude, longitude });
+        mapInitialCoordinates.current = { latitude, longitude };
         setSearchQuery('');
         return coordinateAddress;
     };
@@ -382,17 +393,19 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     };
 
     const updateMapLocation = (latitude: number, longitude: number, address?: string) => {
-        console.log('Updating map location:', latitude, longitude, address);
-        if (webViewRef.current && Platform.OS !== 'web') {
-            const escapedAddress = (address || '').replace(/"/g, '\\"');
-            const script = `
-        if (window.updateLocation) {
-          window.updateLocation(${latitude}, ${longitude}, "${escapedAddress}");
-        }
-      `;
-            webViewRef.current.injectJavaScript(script);
-        }
-    };
+         console.log('Updating map location:', latitude, longitude, address);
+         // Update the marker coordinate state to reflect map position
+         setMarkerCoordinate({ latitude, longitude });
+         if (webViewRef.current && Platform.OS !== 'web') {
+             const escapedAddress = (address || '').replace(/"/g, '\\"');
+             const script = `
+         if (window.updateLocation) {
+           window.updateLocation(${latitude}, ${longitude}, "${escapedAddress}");
+         }
+       `;
+             webViewRef.current.injectJavaScript(script);
+         }
+     };
 
     const generateMapHTML = () => {
         const lat = mapInitialCoordinates.current.latitude || 7.0731;
@@ -626,12 +639,28 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     };
 
     const handleConfirmLocation = () => {
+        console.log('handleConfirmLocation called with:', {
+            selectedAddress,
+            markerCoordinate,
+            hasCoordinates: !!markerCoordinate,
+            lat: markerCoordinate?.latitude,
+            lng: markerCoordinate?.longitude
+        });
+        
         if (selectedAddress && markerCoordinate) {
-            console.log('Confirming location:', selectedAddress, markerCoordinate);
+            console.log('✅ Confirming location:', {
+                address: selectedAddress,
+                coordinates: markerCoordinate,
+                latitude: markerCoordinate.latitude,
+                longitude: markerCoordinate.longitude
+            });
             onLocationSelect(selectedAddress, markerCoordinate);
             onClose();
         } else {
-            Alert.alert('No Location Selected', 'Please select a location by searching, using current location, or tapping on the map.');
+            const missingItems = [];
+            if (!selectedAddress) missingItems.push('address');
+            if (!markerCoordinate) missingItems.push('coordinates');
+            Alert.alert('No Location Selected', `Please select a location by searching, using current location, or tapping on the map. Missing: ${missingItems.join(', ')}`);
         }
     };
 

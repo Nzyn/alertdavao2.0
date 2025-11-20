@@ -54,6 +54,7 @@ async function submitReport(req, res) {
       user_id,
       latitude,
       longitude,
+      reporters_address,
     } = req.body;
 
     console.log("📝 Submitting report:", {
@@ -65,6 +66,7 @@ async function submitReport(req, res) {
       user_id,
       latitude,
       longitude,
+      reporters_address,
       hasFile: !!req.file,
       fileDetails: req.file ? {
         fieldname: req.file.fieldname,
@@ -112,10 +114,11 @@ async function submitReport(req, res) {
     const lat = latitude ? parseFloat(latitude) : 0;
     const lng = longitude ? parseFloat(longitude) : 0;
     const barangay = lat !== 0 && lng !== 0 ? `Lat: ${lat}, Lng: ${lng}` : "Unknown";
+    const address = reporters_address || null;
 
     const [locationResult] = await connection.query(
-      "INSERT INTO locations (barangay, latitude, longitude, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
-      [barangay, lat, lng]
+      "INSERT INTO locations (barangay, reporters_address, latitude, longitude, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
+      [barangay, address, lat, lng]
     );
 
     const locationId = locationResult.insertId;
@@ -195,6 +198,7 @@ async function submitReport(req, res) {
           latitude: lat,
           longitude: lng,
           barangay: barangay,
+          reporters_address: address,
         },
         media: mediaData,
       },
@@ -231,11 +235,18 @@ async function getUserReports(req, res) {
         l.latitude,
         l.longitude,
         l.barangay,
+        l.reporters_address,
         GROUP_CONCAT(CONCAT(rm.media_id, ':', rm.media_url, ':', rm.media_type) SEPARATOR '|') as media
       FROM reports r
       LEFT JOIN locations l ON r.location_id = l.location_id
       LEFT JOIN report_media rm ON r.report_id = rm.report_id
-      WHERE r.user_id = ?
+      WHERE r.user_id = ? 
+        AND r.location_id IS NOT NULL 
+        AND r.location_id != 0
+        AND l.latitude IS NOT NULL 
+        AND l.longitude IS NOT NULL
+        AND l.latitude != 0
+        AND l.longitude != 0
       GROUP BY r.report_id
       ORDER BY r.created_at DESC`,
       [userId]
@@ -264,6 +275,7 @@ async function getUserReports(req, res) {
           latitude: report.latitude,
           longitude: report.longitude,
           barangay: report.barangay,
+          reporters_address: report.reporters_address,
         },
         media: mediaArray,
       };
@@ -299,6 +311,7 @@ async function getAllReports(req, res) {
         l.latitude,
         l.longitude,
         l.barangay,
+        l.reporters_address,
         u.firstname,
         u.lastname,
         u.email,
@@ -307,6 +320,12 @@ async function getAllReports(req, res) {
       LEFT JOIN locations l ON r.location_id = l.location_id
       LEFT JOIN users u ON r.user_id = u.id
       LEFT JOIN report_media rm ON r.report_id = rm.report_id
+      WHERE r.location_id IS NOT NULL 
+        AND r.location_id != 0
+        AND l.latitude IS NOT NULL 
+        AND l.longitude IS NOT NULL
+        AND l.latitude != 0
+        AND l.longitude != 0
       GROUP BY r.report_id
       ORDER BY r.created_at DESC`
     );
@@ -340,6 +359,7 @@ async function getAllReports(req, res) {
           latitude: report.latitude,
           longitude: report.longitude,
           barangay: report.barangay,
+          reporters_address: report.reporters_address,
         },
         media: mediaArray,
       };

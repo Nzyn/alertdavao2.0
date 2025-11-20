@@ -198,6 +198,8 @@
         display: flex;
         gap: 0.25rem;
         align-items: center;
+        position: relative;
+        z-index: 10;
     }
     
     .role-dropdown {
@@ -208,14 +210,14 @@
     .role-dropdown-content {
         display: none;
         position: absolute;
-        right: 0;
+        top: calc(100% + 0.5rem);
+        left: 0;
         background-color: #ffffff;
         min-width: 140px;
         box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-        z-index: 1;
+        z-index: 1000;
         border-radius: 6px;
         border: 1px solid #e5e7eb;
-        margin-top: 0.25rem;
     }
     
     .role-dropdown-content.active {
@@ -265,6 +267,150 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-content {
+        background-color: #fefefe;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: visible;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-close-btn:hover {
+        color: #1f2937;
+    }
+    
+    .station-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 10;
+    }
+    
+    .station-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .modal-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+    
+    .btn-cancel {
+        padding: 0.75rem 1.5rem;
+        border: 1px solid #d1d5db;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-cancel:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+    }
+    
+    .btn-assign {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: #3b82f6;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-assign:hover {
+        background: #2563eb;
+    }
+    
+    .btn-assign:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+    }
+    
+    .assign-station-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: #6b7280;
+        title: 'Assign to Station';
+    }
+    
+    .assign-station-btn:hover {
+        background: #f9fafb;
+        border-color: #3b82f6;
+        color: #3b82f6;
     }
     
     @media (max-width: 768px) {
@@ -346,6 +492,13 @@
                                 <line x1="4" y1="22" x2="4" y2="15"/>
                             </svg>
                         </button>
+                        @if($user->role === 'admin' || $user->role === 'police')
+                        <button class="action-btn assign-station-btn" data-user-id="{{ $user->id }}" title="Assign to Police Station">
+                            <svg class="action-icon" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-5-9h10v2H7z"/>
+                            </svg>
+                        </button>
+                        @endif
                         <div class="role-dropdown">
                             <button class="dropdown-btn role-toggle-btn" data-user-id="{{ $user->id }}" title="Change Role">
                                 <svg class="action-icon" viewBox="0 0 24 24" style="transform: rotate(90deg);">
@@ -375,6 +528,29 @@
         </tbody>
     </table>
 </div>
+
+<!-- Assign Station Modal -->
+<div id="assignStationModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Assign User to Police Station</h2>
+            <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+        </div>
+        
+        <div>
+            <label for="stationSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151; font-size: 0.875rem;">Police Station</label>
+            <select id="stationSelect" class="station-select">
+                <option value="">-- Select a Police Station --</option>
+            </select>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn-cancel" id="cancelBtn">Cancel</button>
+            <button class="btn-assign" id="assignBtn">Assign Station</button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -517,6 +693,106 @@ function changeRole(userId, newRole) {
     }
 }
 
+// Load police stations for modal
+async function loadPoliceStations() {
+    try {
+        const response = await fetch('/api/police-stations', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const stationSelect = document.getElementById('stationSelect');
+            stationSelect.innerHTML = '<option value="">-- Select a Police Station --</option>';
+            
+            if (data.success && data.data) {
+                // Sort stations by station number (lowest to highest)
+                const sortedStations = data.data.sort((a, b) => {
+                    const aNum = parseInt(a.station_name?.match(/\d+/)?.[0] || a.name?.match(/\d+/)?.[0] || 0);
+                    const bNum = parseInt(b.station_name?.match(/\d+/)?.[0] || b.name?.match(/\d+/)?.[0] || 0);
+                    return aNum - bNum;
+                });
+                
+                sortedStations.forEach(station => {
+                    const option = document.createElement('option');
+                    option.value = station.station_id || station.id;
+                    option.textContent = station.station_name || station.name;
+                    stationSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading police stations:', error);
+        alert('Failed to load police stations');
+    }
+}
+
+function openAssignStationModal(userId) {
+    document.getElementById('assignStationModal').classList.add('active');
+    document.getElementById('assignBtn').setAttribute('data-user-id', userId);
+    document.getElementById('stationSelect').value = '';
+    loadPoliceStations();
+}
+
+function closeAssignStationModal() {
+    document.getElementById('assignStationModal').classList.remove('active');
+}
+
+function assignStationToAdmin() {
+    const userId = document.getElementById('assignBtn').getAttribute('data-user-id');
+    const stationId = document.getElementById('stationSelect').value;
+    
+    if (!stationId) {
+        alert('Please select a police station');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to assign this user to the selected police station?')) {
+        return;
+    }
+    
+    const assignBtn = document.getElementById('assignBtn');
+    assignBtn.disabled = true;
+    assignBtn.textContent = 'Assigning...';
+    
+    fetch('/users/' + userId + '/assign-station', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ station_id: stationId })
+    })
+    .then(async response => {
+        const data = await response.json();
+        console.log('Response status:', response.status);
+        console.log('Response data:', data);
+        
+        if (data.success) {
+            alert('Admin user has been assigned to the police station successfully');
+            closeAssignStationModal();
+            location.reload();
+        } else {
+            const errorMsg = data.message || 'Unknown error occurred';
+            console.error('API error:', errorMsg);
+            alert('Error: ' + errorMsg);
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        alert('An error occurred while assigning the user: ' + error.message);
+    })
+    .finally(() => {
+        assignBtn.disabled = false;
+        assignBtn.textContent = 'Assign Station';
+    });
+}
+
 // Add event listeners after the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Flag user button click handler
@@ -526,6 +802,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const userId = this.getAttribute('data-user-id');
             flagUser(userId);
         });
+    });
+    
+    // Assign station button click handler
+    document.querySelectorAll('.assign-station-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const userId = this.getAttribute('data-user-id');
+            openAssignStationModal(userId);
+        });
+    });
+    
+    // Modal button handlers
+    document.getElementById('modalCloseBtn').addEventListener('click', closeAssignStationModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeAssignStationModal);
+    document.getElementById('assignBtn').addEventListener('click', assignStationToAdmin);
+    
+    // Close modal when clicking outside
+    document.getElementById('assignStationModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAssignStationModal();
+        }
     });
     
     // Role toggle button click handler - toggle dropdown visibility
